@@ -1,0 +1,347 @@
+<html>
+
+
+<body onload = "start()" onkeydown="whichKey(event)" onkeyup="unPress()">
+  <canvas id="board" width="1000" height="500" style="border:1px solid #000000; background-color: #000000;">
+  </canvas>
+</body>
+
+
+
+<script>
+
+var boardVar = document.getElementById("board");//the html canvas
+
+const ctx = boardVar.getContext("2d");//the context of the canvas (what all of the methods get called on)
+
+
+//opponent coordinates
+var oX = 920;
+var oY = 200;
+
+
+//defining all variables so they are global
+var gameBlock;
+
+//pong speed (how far it should travel in the x and y direction. The pixels coordinates moved  )
+var pongSpeed;
+var pongSX;
+var pongSY;
+
+//blockX and blockY coordinate
+var blockX;
+var blockY;
+
+//the paddle length and the width that will stay constant
+var blockL = 90;
+var blockW = 30;
+
+var interval;
+
+//boolean up and down
+var up;
+var down;
+
+
+//pong x and y coordinate
+var pongX;
+var pongY;
+
+
+//if the game has ended or if the point has ended
+var end = false;
+var endPoint = false;
+
+
+//scores start at 0
+var score1 = 0;
+var score2 = 0;
+
+
+/*
+* Method checks to see if the user has clicked to restart the game or the point. This click would have to be
+* only when the game has been lost or won, or they want to play another point. There is a global boolean variable to check
+*if the game is over or if the poin is over. Either way the game restarts but if the game was not over the score does not reset.
+*/
+function checkRestart(){
+  boardVar.addEventListener("click", function(){
+    if(end)
+    {
+    score1 = 0;
+    score2 = 0;
+    }
+    if(end || endPoint){
+    ctx.clearRect(0, 0, boardVar.width, boardVar.height);
+    start();
+    }
+  })
+}
+
+checkRestart();
+
+
+
+
+/**
+* Method runs the game. It first resets the variables, then randomly pick the change in Y and X coordinates.
+* Then it prints the ball and both paddles. Then it makes an interval that calls updateCanvas every 5 milliseconds.
+*/
+function start(){
+  pongSX = 2.0;
+
+  //makes a random slope of the ball
+  pongSY = Math.floor(Math.random() * 3) + 1;
+  var negOrPos = Math.floor(Math.random() * 2) + 1;//makes it randomly negative or positive
+  if(negOrPos == 1)
+    pongSY *= -1;
+  negOrPos = Math.floor(Math.random() * 2) + 1;//does the same thing fo the x slope
+  if(negOrPos == 1)
+    pongSX *= -1;
+
+  oX = 920;
+  oY = 200;
+  pongSpeed = 1.25;
+  blockX = 50;
+  up = false;
+  down = false;
+  blockY = 140;
+  pongX = 500;
+  pongY = 250;
+  end = false;
+  endPoint = false;
+
+  interval = setInterval(updated, 5);//will update every 10 milliseconds
+
+
+
+}
+
+
+/**
+* Function makes the pongBall by using the pongX and pongY coordinates and a radius of 20
+*/
+function pongBall()
+{
+  ctx.fillStyle = "blue";
+  ctx.beginPath();//needed to prevent lag, it clears all of the other circles paths,
+  ctx.arc(pongX, pongY, 20, 0, 2 * Math.PI);//makes a circle context.arc(x,y,r,startAngle,EndAngle)
+  ctx.fill();
+
+}
+
+
+
+/**
+* Function makes the down and up variables false so the paddle stops moving. Gets called onKeyUp.
+*/
+function unPress(){
+  down = false;
+  up = false;
+}
+
+
+
+
+/**
+* Function takes in the x and y coordinates of the top left point of the rect. Also takes in width
+* and length and then makes a rectangle with those specifications.
+* @param x The x coordinate of the top left point
+* @param y the y coordinate of the top left point
+* @param w the width of the rectangle
+* @param l the length of the rectangle
+*/
+function block(x, y, w, l)
+{
+  ctx.fillStyle = "red";
+  ctx.fillRect(x, y, w, l);
+}
+
+
+/**
+* Updated is the variable for the function that updates the board. It changes
+* all of the coordinates of the balls and the paddles, prints the middle line, and prints
+* the score. It will also check if the ball hits the paddles, or the walls, or goes passed the paddle
+* doing numerous different things.
+*/
+var updated = function updateCanvas(){
+
+  //player block movement
+  var change = 0;
+  if(up)
+    change = -3;//negative is really going up
+  if(down)
+    change = 3;
+  if(blockY + change < 410 && blockY + change > 0)
+    blockY += change;
+
+  //opponent movement (will find where the ball is going as soon as the player hits it)
+  var findPY = 250;
+  if(pongSX > 0){//if the player has just hit the ball
+    var findPX = pongX;
+    findPY = pongY;
+    var findPongSY = pongSY;
+    while(findPX < oX)
+    {
+      if(findPY <= 20 || findPY >= 480)
+        findPongSY *= -1;
+      findPX += pongSX * pongSpeed;
+      findPY += findPongSY * pongSpeed;
+    }
+  }
+  if(oY + blockL / 2 > findPY && oY - 3 > 0)
+    oY -= 1;//slower speed than the player speed
+  if(oY + blockL / 2 < findPY && oY + 3 < 410)//blockL
+    oY += 1;
+
+
+
+  ctx.clearRect(0, 0, boardVar.width, boardVar.height);
+
+  //reasigning the paddles to their updated positions
+  gameBlock = block(blockX, blockY, blockW, blockL);
+  opponent = block(oX, oY, blockW, blockL);
+
+  if(pongX <= -20)//Ball passes left wall
+  {
+    score2 ++;
+    endOfPoint();
+  }
+  else if(pongX >= 1020){//Ball passes right wall
+    score1 ++;
+    endOfPoint();
+  }
+  else{
+  pongX += pongSX * pongSpeed;//changes the speed by pongSpeed every time the ball hits the paddle
+  pongY += pongSY * pongSpeed;
+  ball = pongBall();
+}
+
+  //score (top left and top right)
+  ctx.font = "50px Impact";
+  ctx.fillStyle = "blue";
+  ctx.textAlign = "center";
+  ctx.fillText(score1, 333, 50);
+  ctx.fillText(score2, 666, 50);
+
+  //middle line
+  ctx.beginPath();
+  ctx.moveTo(500, 0);
+  ctx.lineTo(500, 500);
+  ctx.strokeStyle = "white";
+  ctx.stroke();
+
+  //hitting front of player paddle
+  //20 is the radius of the circle and pongX is the center coordinate so 20 always needs to be added or subtracted
+  //the code is not pongX == blockX + blockW + 20 because as the game picks up, sometimes the ball will go passed that line
+  //in one move and then it will never actually equal that.
+  if(pongX <= blockX + blockW + 20 &&  pongX >= blockX + blockW + 10 && pongY >= blockY - 20 && pongY <= blockY + blockL + 20){
+    pongSX = pongSX * -1;//Opposite x direction
+    pongSpeed += 0.25;//pongSpeed goes up every time the ball bounces off of the front of a paddle
+  }
+
+
+  //bouncing off front of opponent paddle
+  if(pongX >= oX - 20 && pongX <= oX + 10 && pongY >= oY - 20 && pongY <= oY + blockL + 20){
+    pongSX = pongSX * -1;//Opposite x direction
+    pongSpeed += 0.25;
+  }
+
+
+
+  //hitting bottom of the paddle
+  if(pongY <= blockY + blockL + 20 &&  pongY >= blockY + blockL + 10 && pongX >= blockX - 20 && pongX <= blockX + blockW + 20){
+    pongSY = pongSY * -1;//Opposite Y direction
+  }
+
+  //hitting top of the paddle
+  if(pongY >= blockY - 20 && pongY <= blockY - 15 && pongX >= blockX - 20 && pongX <= blockX + blockW + 20){
+    pongSY = pongSY * -1;//Opposite Y direction
+  }
+
+  //bounce off top and bottom walls
+  if(pongY >= 480 || pongY <= 20){
+    pongSY = pongSY * -1;//Opposite Y direction
+  }
+
+
+}
+
+
+/**
+* Function is called after the ball passes the right or left walls. It stops the game
+* and then checks if a player has reached the value the game is being played until. If the
+* goal score has not been reached then the code will wait for the player to click on the screen
+* and a new point will be played (using the checkRestart method for clicking).
+*/
+function endOfPoint()
+{
+  clearInterval(interval);
+  if(score1 == 3)
+    endWin();
+  else if(score2 == 3)
+    endLose();
+  else{
+    endPoint = true;//used in checkRestart to make sure the point is over before it gets restarted
+    ctx.font = "70px Impact";
+    ctx.strokeStyle = "green";
+    ctx.textAlign = "center";
+    ctx.strokeText("Click To Keep Playing", 500, 250);
+  }
+}
+
+/*
+* When a key is pressed, this method is called, and it checks if the up or down arrow has been called
+* which would move the player paddle either up or downs
+*/
+function whichKey(event){//When a key is being pressed down currently
+  var code = event.keyCode;
+  if(code == 40){
+    down = true;
+  }
+
+  if(code == 38){
+    up = true;
+  }
+}
+
+/**
+* Function ends the game. It clears the board and writes you win and then directions to
+* play again. It will also end the interval. The end boolean variable gets set to true so that
+* if the user clicks, the game will restart use=ing checkRestart method.
+*/
+function endWin()
+{
+  ctx.clearRect(0, 0, boardVar.width, boardVar.height);
+  clearInterval(interval);
+  ctx.fillStyle = "red";
+  ctx.strokeStyle = "red";
+  ctx.font = "100px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("You Win",500,250);
+  ctx.font = "60px Arial";
+  ctx.strokeText("Click To Play Again",500, 330);
+  end = true;
+}
+
+/**
+* Does the same thing as endWin except that it will print you lose instead of you win
+*/
+function endLose()
+{
+  ctx.clearRect(0, 0, boardVar.width, boardVar.height);
+  clearInterval(interval);
+  ctx.fillStyle = "red";
+  ctx.strokeStyle = "red";
+  ctx.font = "100px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("You Lose",500,250);
+  ctx.font = "60px Arial";
+  ctx.strokeText("Click To Play Again",500, 330);
+  end = true;
+}
+
+
+
+</script>
+
+</html>
